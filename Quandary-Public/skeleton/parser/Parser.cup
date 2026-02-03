@@ -27,18 +27,20 @@ parser code {:
 
 :};
 
-terminal PLUS, MINUS, LPAREN, RPAREN;
+terminal PLUS, MINUS, MULT, LPAREN, RPAREN, RETURN, SEMICOLON;
 terminal Long    INTCONST;
 
 non terminal Program         program;
 non terminal Expr            expr;
 non terminal BinaryExpr      binaryExpr;
+non terminal UnaryMinusExpr       unaryMinusExpr;
 
 precedence left PLUS, MINUS;
+precedence left MULT;
 
 start with program;
 
-program ::= expr:e
+program ::= RETURN expr:e SEMICOLON
             {: RESULT = new Program(e, loc(eleft, eright)); :}
          ;
 
@@ -48,10 +50,18 @@ expr ::= INTCONST:c
          {: RESULT = e; :}
       |  LPAREN expr:e RPAREN
          {: RESULT = e; :}
+      |  unaryMinusExpr:e
+         {: RESULT = e; :}
       ;
+
+unaryMinusExpr ::= MINUS expr:e                
+              {: RESULT = new UnaryMinusExpr(e, loc(eleft, eright)); :}
+         ;
 
 binaryExpr ::= expr:e1 PLUS expr:e2
                {: RESULT = new BinaryExpr(e1, BinaryExpr.PLUS, e2, loc(e1left, e1right)); :}
             |  expr:e1 MINUS expr:e2
                {: RESULT = new BinaryExpr(e1, BinaryExpr.MINUS, e2, loc(e1left, e1right)); :}
+            |  expr:e1 MULT expr:e2
+               {: RESULT = new BinaryExpr(e1, BinaryExpr.MULT, e2, loc(e1left, e1right)); :}
             ;
