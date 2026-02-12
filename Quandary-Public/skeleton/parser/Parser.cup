@@ -27,22 +27,83 @@ parser code {:
 
 :};
 
-terminal PLUS, MINUS, MULT, LPAREN, RPAREN, RETURN, SEMICOLON;
+terminal PLUS, MINUS, MULT;
+terminal LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON;
+terminal MAIN, PRINT, IF, RETURN; 
+terminal EQEQ, NOTEQ, LT, GT, LEQ, GEQ;
 terminal Long    INTCONST;
 
 non terminal Program         program;
 non terminal Expr            expr;
 non terminal BinaryExpr      binaryExpr;
 non terminal UnaryMinusExpr       unaryMinusExpr;
+non terminal ReturnStatement returnStatement;
+non terminal PrintStatement printStatement;
+non terminal Statement statement;
+non terminal Block block;
+non terminal ArrayList<Statement> statementList;
+non terminal IfStatement ifStatement; 
+non terminal Condition condition; 
+non terminal Comparison comparison; 
 
 precedence left PLUS, MINUS;
 precedence left MULT;
 
 start with program;
 
-program ::= RETURN expr:e SEMICOLON
-            {: RESULT = new Program(e, loc(eleft, eright)); :}
+program ::= MAIN block:b
+            {: RESULT = new Program(b, loc(bleft, bright)); :}
          ;
+
+block ::= LBRACK statementList:sl RBRACK 
+            {: RESULT = new Block(sl, loc(slleft, slright)); :}
+         ;
+
+statementList ::= statement:s
+                  {: RESULT = new ArrayList<Statement>();
+                     RESULT.add(s); :}
+               |  statementList:sl statement:s
+                  {: sl.add(s);
+                     RESULT = sl; :}
+               ;
+
+statement ::= returnStatement:s 
+         {: RESULT = s; :}
+      | printStatement:s
+         {: RESULT = s; :}
+      | ifStatement:s 
+         {: RESULT = s; :}
+      ;
+
+ifStatement ::= IF LPAREN condition:c RPAREN block:b
+         {: RESULT = new IfStatement(b, c, loc(cleft, cright)); :}
+      ;
+
+returnStatement ::= RETURN expr:e SEMICOLON
+         {: RESULT = new ReturnStatement(e, loc(eleft, eright)); :}
+      ;
+
+printStatement ::= PRINT expr:e SEMICOLON
+         {: RESULT = new PrintStatement(e, loc(eleft, eright)); :}
+      ;
+
+condition ::= comparison:c 
+         {: RESULT = c; :}
+      ;
+
+comparison ::= expr:e1 EQEQ expr:e2
+              {: RESULT = new Comparison(e1, Comparison.EQUALS, e2, loc(e1left, e1right)); :}
+           |  expr:e1 NOTEQ expr:e2
+              {: RESULT = new Comparison(e1, Comparison.NOT_EQUALS, e2, loc(e1left, e1right)); :}
+           |  expr:e1 LT expr:e2
+              {: RESULT = new Comparison(e1, Comparison.LESS_THAN, e2, loc(e1left, e1right)); :}
+           |  expr:e1 GT expr:e2
+              {: RESULT = new Comparison(e1, Comparison.GREATER_THAN, e2, loc(e1left, e1right)); :}
+           |  expr:e1 LEQ expr:e2
+              {: RESULT = new Comparison(e1, Comparison.LESS_EQUAL, e2, loc(e1left, e1right)); :}
+           |  expr:e1 GEQ expr:e2
+              {: RESULT = new Comparison(e1, Comparison.GREATER_EQUAL, e2, loc(e1left, e1right)); :}
+           ;
 
 expr ::= INTCONST:c
          {: RESULT = new ConstExpr(c, loc(cleft, cright)); :}

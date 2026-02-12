@@ -69,6 +69,17 @@ white_space = {new_line} | [ \t\f]
 ")"               { return symbol(")",  RPAREN); }
 "*"               { return symbol("*", MULT);}
 ";"               { return symbol(";",  SEMICOLON); }
+"{"               { return symbol("{",  LBRACK); }
+"}"               { return symbol("}",  RBRACK); }
+"=="               { return symbol("==",  EQEQ); }
+"!="               { return symbol("!=",  NOTEQ); }
+"<"                { return symbol("<",   LT); }
+">"                { return symbol(">",   GT); }
+"<="               { return symbol("<=",  LEQ); }
+">="               { return symbol(">=",  GEQ); }
+"print"           { return symbol("print", PRINT); }
+"if"           { return symbol("if", IF); }
+"int main(int arg)"               { return symbol("int main(int arg)",  MAIN); }
 "return"               { return symbol("return",  RETURN); }
 
 /* You shouldn't need to modify anything below this */

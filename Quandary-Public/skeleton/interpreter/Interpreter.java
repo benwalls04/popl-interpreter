@@ -102,23 +102,68 @@ public class Interpreter {
     }
 
     Object executeRoot(Program astRoot, long arg) {
-        return evaluate(astRoot.getExpr());
+        return executeBlock(astRoot.getBlock());
     }
 
-    Object evaluate(Expr expr) {
+    Object executeBlock(Block block) {
+        for (Statement statement : block.getStatements()) {
+            Object result = executeStatement(statement);
+            if (statement instanceof ReturnStatement) {
+                return result; 
+            }
+        }
+        return null;  
+    }
+
+    Object executeStatement(Statement statement) {
+        if (statement instanceof ReturnStatement) {
+            return evaluateExpr(((ReturnStatement)statement).getExpr());
+        } else if (statement instanceof PrintStatement) {
+            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr()).toString());
+        } else if (statement instanceof IfStatement) {
+            IfStatement ifStatement = (IfStatement)statement; 
+            if (evaluateCondition(ifStatement.getCondition())) {
+                executeBlock(ifStatement.getBlock());
+            }
+        }
+        return null;
+    }
+
+    Boolean evaluateCondition(Condition cond) {
+        if (cond instanceof Comparison) {
+            Comparison comp = (Comparison)cond;
+            long val1 = (Long)evaluateExpr(comp.getLeftExpr());
+            long val2 = (Long)evaluateExpr(comp.getRightExpr());
+            
+            switch(comp.getOperator()) {
+                case Comparison.EQUALS: return val1 == val2;
+                case Comparison.NOT_EQUALS: return val1 != val2;
+                case Comparison.LESS_THAN: return val1 < val2;
+                case Comparison.GREATER_THAN: return val1 > val2;
+                case Comparison.LESS_EQUAL: return val1 <= val2;
+                case Comparison.GREATER_EQUAL: return val1 >= val2;
+                default: throw new RuntimeException("Unknown operator");
+            }
+        }
+        throw new RuntimeException("Unknown condition type");
+    }
+
+    Object evaluateExpr(Expr expr) {
         if (expr instanceof ConstExpr) {
             return ((ConstExpr)expr).getValue();
         } else if (expr instanceof BinaryExpr) {
             BinaryExpr binaryExpr = (BinaryExpr)expr;
+            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr());
+            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr());
             switch (binaryExpr.getOperator()) {
-                case BinaryExpr.PLUS: return (Long)evaluate(binaryExpr.getLeftExpr()) + (Long)evaluate(binaryExpr.getRightExpr());
-                case BinaryExpr.MINUS: return (Long)evaluate(binaryExpr.getLeftExpr()) - (Long)evaluate(binaryExpr.getRightExpr());
-                case BinaryExpr.MULT: return (Long)evaluate(binaryExpr.getLeftExpr()) * (Long)evaluate(binaryExpr.getRightExpr());
+                case BinaryExpr.PLUS: return val1 + val2;
+                case BinaryExpr.MINUS: return val1 - val2;
+                case BinaryExpr.MULT: return val1 * val2;
                 default: throw new RuntimeException("Unhandled operator");
             }
         } else if (expr instanceof UnaryMinusExpr) {
             UnaryMinusExpr unaryMinusExpr = (UnaryMinusExpr)expr;
-            return -1 * (Long)evaluate(unaryMinusExpr.getExpr());
+            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr());
         } else {
             throw new RuntimeException("Unhandled Expr type");
         }
