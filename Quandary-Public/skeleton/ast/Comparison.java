@@ -33,6 +33,21 @@ public class Comparison extends Condition {
 
     @Override
     public String toString() {
-      return expr1.toString() + " " + Integer.toString(operator) + " " + expr2.toString();  
+        switch (operator) {
+            case EQUALS:
+                return expr1.toString() + " == " + expr2.toString();
+            case NOT_EQUALS:
+                return expr1.toString() + " != " + expr2.toString();
+            case LESS_THAN:
+                return expr1.toString() + " < " + expr2.toString();
+            case GREATER_THAN:
+                return expr1.toString() + " > " + expr2.toString();
+            case LESS_EQUAL:
+                return expr1.toString() + " <= " + expr2.toString();
+            case GREATER_EQUAL:
+                return expr1.toString() + " >= " + expr2.toString();
+            default:
+                return "unknown operator";
+        }
     }
 }

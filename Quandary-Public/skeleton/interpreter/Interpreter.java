@@ -2,6 +2,9 @@ package interpreter;
 
 import java.io.*;
 import java.util.Random;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 import parser.ParserWrapper;
 import ast.*;
@@ -102,38 +105,71 @@ public class Interpreter {
     }
 
     Object executeRoot(Program astRoot, long arg) {
-        return executeBlock(astRoot.getBlock());
+        Map<String, Object> memory = new HashMap<String, Object>();
+        String argName = astRoot.getArg();
+        memory.put(argName, arg);
+        return executeBlock(astRoot.getBlock(), memory);
     }
 
-    Object executeBlock(Block block) {
+    Object executeBlock(Block block, Map<String, Object> memory) {
         for (Statement statement : block.getStatements()) {
-            Object result = executeStatement(statement);
-            if (statement instanceof ReturnStatement) {
+            Object result = executeStatement(statement, memory);
+            if (result != null) {  
                 return result; 
             }
         }
         return null;  
     }
 
-    Object executeStatement(Statement statement) {
+    Object executeStatement(Statement statement, Map<String, Object> memory) {
         if (statement instanceof ReturnStatement) {
-            return evaluateExpr(((ReturnStatement)statement).getExpr());
+            return evaluateExpr(((ReturnStatement)statement).getExpr(), memory);
         } else if (statement instanceof PrintStatement) {
-            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr()).toString());
+            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr(), memory).toString());
         } else if (statement instanceof IfStatement) {
-            IfStatement ifStatement = (IfStatement)statement; 
-            if (evaluateCondition(ifStatement.getCondition())) {
-                executeBlock(ifStatement.getBlock());
+            Object result = executeIfStatement((IfStatement)statement, memory);
+            if (result != null) {
+                return result; 
+            }
+        } else if (statement instanceof Declaration) {
+            Declaration d = (Declaration)statement;
+            memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory) : null);
+        } else if (statement instanceof Assignment) {
+            Assignment a = (Assignment)statement;
+            if (memory.containsKey(a.getName())) {
+                memory.put(a.getName(), evaluateExpr(a.getExpr(), memory));
+            }
+        } else if (statement instanceof BlockStatement) {
+            BlockStatement blockStmt = (BlockStatement)statement;
+            Object result = executeBlock(blockStmt.getBlock(), memory);
+            if (result != null) {
+                return result;
             }
         }
         return null;
     }
 
-    Boolean evaluateCondition(Condition cond) {
+    
+    Object executeIfStatement(IfStatement statement, Map<String, Object> memory) {
+        if (evaluateCondition(statement.getCondition(), memory)) {
+            Object result = executeBlock(statement.getThenBlock(), memory);
+            if (result != null) {  
+                return result;
+            }
+        } else if (statement.hasElse()) {
+            Object result = executeBlock(statement.getElseBlock(), memory);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    Boolean evaluateCondition(Condition cond, Map<String, Object> memory) {
         if (cond instanceof Comparison) {
             Comparison comp = (Comparison)cond;
-            long val1 = (Long)evaluateExpr(comp.getLeftExpr());
-            long val2 = (Long)evaluateExpr(comp.getRightExpr());
+            long val1 = (Long)evaluateExpr(comp.getLeftExpr(), memory);
+            long val2 = (Long)evaluateExpr(comp.getRightExpr(), memory);
             
             switch(comp.getOperator()) {
                 case Comparison.EQUALS: return val1 == val2;
@@ -144,17 +180,29 @@ public class Interpreter {
                 case Comparison.GREATER_EQUAL: return val1 >= val2;
                 default: throw new RuntimeException("Unknown operator");
             }
+        } else if (cond instanceof LogicalCond) {
+            LogicalCond logic = (LogicalCond)cond;
+            if (logic.getOperator() == LogicalCond.NOT) {
+                return !evaluateCondition(logic.getLeftCond(), memory);
+            } 
+            Boolean val1 = evaluateCondition(logic.getLeftCond(), memory);
+            Boolean val2 = evaluateCondition(logic.getRightCond(), memory);
+            switch (logic.getOperator()) {
+                case LogicalCond.AND: return val1 && val2; 
+                case LogicalCond.OR: return val1 || val2;
+                default: throw new RuntimeException("Unknown logical operator");
+            }
         }
         throw new RuntimeException("Unknown condition type");
     }
 
-    Object evaluateExpr(Expr expr) {
+    Object evaluateExpr(Expr expr, Map<String, Object> memory) {
         if (expr instanceof ConstExpr) {
             return ((ConstExpr)expr).getValue();
         } else if (expr instanceof BinaryExpr) {
             BinaryExpr binaryExpr = (BinaryExpr)expr;
-            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr());
-            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr());
+            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr(), memory);
+            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr(), memory);
             switch (binaryExpr.getOperator()) {
                 case BinaryExpr.PLUS: return val1 + val2;
                 case BinaryExpr.MINUS: return val1 - val2;
@@ -163,7 +211,14 @@ public class Interpreter {
             }
         } else if (expr instanceof UnaryMinusExpr) {
             UnaryMinusExpr unaryMinusExpr = (UnaryMinusExpr)expr;
-            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr());
+            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr(), memory);
+        } else if (expr instanceof VarExpr) {
+            VarExpr varExpr = (VarExpr)expr;
+            String varName = varExpr.getName();
+            if (!memory.containsKey(varName)) {
+                throw new RuntimeException("Undefined variable: " + varName);
+            }
+            return memory.get(varName);
         } else {
             throw new RuntimeException("Unhandled Expr type");
         }
