@@ -46,7 +46,6 @@ non terminal ReturnStatement returnStatement;
 non terminal PrintStatement printStatement;
 non terminal Statement statement;
 non terminal Block block;
-non terminal Block elseBlock;
 non terminal ArrayList<Statement> statementList;
 non terminal IfStatement ifStatement; 
 non terminal Condition condition; 
@@ -54,7 +53,6 @@ non terminal Comparison comparison;
 non terminal Declaration declarationStatement;
 non terminal Assignment assignStatement;
 non terminal LogicalCond logicalCond;
-non terminal Statement simpleStatement;
 
 precedence left OR;
 precedence left AND;
@@ -83,61 +81,26 @@ statementList ::= statement:s
                      RESULT = sl; :}
                ;
 
-simpleStatement ::= returnStatement:s 
+statement ::= printStatement:s
          {: RESULT = s; :}
-      | printStatement:s
+      |  assignStatement:s
          {: RESULT = s; :}
-      | assignStatement:s 
+      |  declarationStatement:s
          {: RESULT = s; :}
-      | declarationStatement:s
-         {: RESULT = s; :}
-      ;
-
-statement ::= simpleStatement:s
+      |  returnStatement:s
          {: RESULT = s; :}
       | ifStatement:s 
          {: RESULT = s; :}
       | block:b
-         {: RESULT = new BlockStatement(b, loc(bleft, bright)); :}
+         {: RESULT = b; :}
       ;
 
-ifStatement ::= IF LPAREN condition:c RPAREN block:b ELSE ifStatement:s2
-                {: ArrayList<Statement> stmts = new ArrayList<Statement>();
-                   stmts.add(s2);
-                   Block elseBlock = new Block(stmts, loc(s2left, s2right));
-                   RESULT = new IfStatement(c, b, elseBlock, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN block:b ELSE block:eb
-                {: RESULT = new IfStatement(c, b, eb, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN block:b
-                {: RESULT = new IfStatement(c, b, null, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN simpleStatement:s ELSE ifStatement:s2
-                {: ArrayList<Statement> thenStmts = new ArrayList<Statement>();
-                   thenStmts.add(s);
-                   Block thenBlock = new Block(thenStmts, loc(sleft, sright));
-                   ArrayList<Statement> elseStmts = new ArrayList<Statement>();
-                   elseStmts.add(s2);
-                   Block elseBlock = new Block(elseStmts, loc(s2left, s2right));
-                   RESULT = new IfStatement(c, thenBlock, elseBlock, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN simpleStatement:s ELSE block:eb
-                {: ArrayList<Statement> stmts = new ArrayList<Statement>();
-                   stmts.add(s);
-                   Block thenBlock = new Block(stmts, loc(sleft, sright));
-                   RESULT = new IfStatement(c, thenBlock, eb, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN simpleStatement:s ELSE simpleStatement:s2
-                {: ArrayList<Statement> thenStmts = new ArrayList<Statement>();
-                   thenStmts.add(s);
-                   Block thenBlock = new Block(thenStmts, loc(sleft, sright));
-                   ArrayList<Statement> elseStmts = new ArrayList<Statement>();
-                   elseStmts.add(s2);
-                   Block elseBlock = new Block(elseStmts, loc(s2left, s2right));
-                   RESULT = new IfStatement(c, thenBlock, elseBlock, loc(cleft, cright)); :}
-             |  IF LPAREN condition:c RPAREN simpleStatement:s
-                {: ArrayList<Statement> stmts = new ArrayList<Statement>();
-                   stmts.add(s);
-                   Block thenBlock = new Block(stmts, loc(sleft, sright));
-                   RESULT = new IfStatement(c, thenBlock, null, loc(cleft, cright)); :}
-             ;
-
+ifStatement ::= IF LPAREN condition:c RPAREN statement:thenStmt ELSE statement:elseStmt
+                {: RESULT = new IfStatement(c, thenStmt, elseStmt, loc(cleft, cright)); :}
+            |  IF LPAREN condition:c RPAREN statement:thenStmt 
+                {: RESULT = new IfStatement(c, thenStmt, null, loc(cleft, cright)); :} 
+            ;
+             
 assignStatement ::= IDENTIFIER:id ASSIGN expr:e SEMICOLON
                     {: RESULT = new Assignment(id, e, loc(idleft, idright)); :}
                  ;

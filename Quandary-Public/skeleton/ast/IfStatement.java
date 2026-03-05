@@ -1,23 +1,20 @@
 package ast;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 public class IfStatement extends Statement {
     final Condition condition;
     final Block thenBlock;
     final Block elseBlock; 
     
-    public IfStatement(Condition condition, Block thenBlock, Block elseBlock, Location loc) {
+    public IfStatement(Condition condition, Statement thenBlock, Statement elseBlock, Location loc){
         super(loc);
         this.condition = condition;
-        this.thenBlock = thenBlock;
-        this.elseBlock = elseBlock;
+        this.thenBlock = (thenBlock instanceof Block) ? (Block) thenBlock 
+                       : new Block(new ArrayList<>(Arrays.asList(thenBlock)), loc);
+        this.elseBlock = (elseBlock instanceof Block) ? (Block) elseBlock
+                       : (elseBlock != null ? new Block(new ArrayList<>(Arrays.asList(elseBlock)), loc) : null);
     }
-
-    //IfStatement(cond, thenStmt, elseStmt, loc) {
-    // thenStmt and elseStmt can be blocks or single statements
-    // Optionally, wrap single statements into Block if your AST expects a Block always
-    //this.thenBlock = (thenStmt instanceof Block) ? thenStmt : new Block([thenStmt]);
-    //this.elseBlock = (elseStmt instanceof Block) ? elseStmt : new Block([elseStmt]);
-    //}
 
     public Condition getCondition() {
         return condition;

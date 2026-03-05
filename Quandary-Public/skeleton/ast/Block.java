@@ -1,7 +1,7 @@
 package ast;
 import java.util.ArrayList;
 
-public class Block extends ASTNode{
+public class Block extends Statement{
   final ArrayList<Statement> statements;
 
   public Block(ArrayList<Statement> statements, Location loc) {

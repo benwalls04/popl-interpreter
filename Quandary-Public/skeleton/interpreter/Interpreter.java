@@ -139,12 +139,13 @@ public class Interpreter {
             if (memory.containsKey(a.getName())) {
                 memory.put(a.getName(), evaluateExpr(a.getExpr(), memory));
             }
-        } else if (statement instanceof BlockStatement) {
-            BlockStatement blockStmt = (BlockStatement)statement;
-            Object result = executeBlock(blockStmt.getBlock(), memory);
+        } else if (statement instanceof Block) {
+            Block blockStmt = (Block)statement;
+            Object result = executeBlock(blockStmt, memory);
             if (result != null) {
                 return result;
             }
+
         }
         return null;
     }
