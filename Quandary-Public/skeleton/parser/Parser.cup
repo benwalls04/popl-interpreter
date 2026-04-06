@@ -29,14 +29,14 @@ parser code {:
 
 terminal PLUS, MINUS, MULT;
 terminal LPAREN, RPAREN, LBRACK, RBRACK, SEMICOLON;
-terminal MAIN, PRINT, IF, ELSE, RETURN; 
+terminal PRINT, IF, ELSE, RETURN; 
 terminal EQEQ, NOTEQ, LT, GT, LEQ, GEQ;
 terminal NOT, AND, OR;
-terminal INT, Q; 
 terminal ASSIGN; 
 terminal Long    INTCONST;
 terminal String IDENTIFIER; 
 terminal String TYPE;
+terminal String COMMA;
 
 non terminal Program         program;
 non terminal Expr            expr;
@@ -53,6 +53,11 @@ non terminal Comparison comparison;
 non terminal Declaration declarationStatement;
 non terminal Assignment assignStatement;
 non terminal LogicalCond logicalCond;
+non terminal FunctionCall functionCall; 
+non terminal FunctionDecl functionDecl; 
+non terminal ArrayList<Expr> argList;
+non terminal ArrayList<FunctionDecl> functionList; 
+non terminal ArrayList<String> paramList;
 
 precedence left OR;
 precedence left AND;
@@ -65,9 +70,28 @@ precedence nonassoc ELSE;
 
 start with program;
 
-program ::= MAIN LPAREN TYPE:t IDENTIFIER:id RPAREN block:b
-            {: RESULT = new Program(id, b, loc(bleft, bright)); :}
+program ::= functionList:funcList
+            {: RESULT = new Program(funcList, loc(0, 0)); :}
          ;
+
+functionList ::= functionList:list1 functionDecl:f 
+                  {: list1.add(f); RESULT = list1; :}
+               | functionDecl:f
+                  {: ArrayList<FunctionDecl> list = new ArrayList<>(); list.add(f); RESULT = list; :}
+               ;
+
+functionDecl ::= TYPE:t IDENTIFIER:id LPAREN paramList:params RPAREN LBRACK statementList:b RBRACK
+            {: RESULT = new FunctionDecl(id, params, b, loc(bleft, bright)); :}
+         ;
+
+paramList ::= TYPE:t IDENTIFIER:id
+            {: RESULT = new ArrayList<String>();
+               RESULT.add(id); :}
+         | paramList:params1 COMMA TYPE:t IDENTIFIER:id
+            {: params1.add(id);
+               RESULT = params1; :}
+         |  {: RESULT = new ArrayList<String>(); :}
+      ;
 
 block ::= LBRACK statementList:sl RBRACK 
             {: RESULT = new Block(sl, loc(slleft, slright)); :} 
@@ -93,6 +117,19 @@ statement ::= printStatement:s
          {: RESULT = s; :}
       | block:b
          {: RESULT = b; :}
+      ;
+
+functionCall ::= IDENTIFIER:id LPAREN argList:args RPAREN 
+         {: RESULT = new FunctionCall(id, args, loc(idleft, idright)); :}
+      ;
+
+argList ::= expr:e 
+         {: RESULT = new ArrayList<Expr>();
+            RESULT.add(e); :}
+      | argList:args COMMA expr:e 
+         {: args.add(e);
+            RESULT = args; :}
+      | {: RESULT = new ArrayList<Expr>(); :}
       ;
 
 ifStatement ::= IF LPAREN condition:c RPAREN statement:thenStmt ELSE statement:elseStmt
@@ -159,6 +196,8 @@ expr ::= INTCONST:c
          {: RESULT = e; :}
       |  unaryMinusExpr:e
          {: RESULT = e; :}
+      |  functionCall:f 
+         {: RESULT = f; :}
       ;
 
 unaryMinusExpr ::= MINUS expr:e                

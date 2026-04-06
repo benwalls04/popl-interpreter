@@ -105,43 +105,59 @@ public class Interpreter {
     }
 
     Object executeRoot(Program astRoot, long arg) {
-        Map<String, Object> memory = new HashMap<String, Object>();
-        String argName = astRoot.getArg();
-        memory.put(argName, arg);
-        return executeBlock(astRoot.getBlock(), memory);
+
+        Map<String, FunctionDecl> functions = new HashMap<>();
+
+        for (FunctionDecl f : astRoot.getFunctions()) {
+            functions.put(f.getName(), f);
+        }
+
+        if (!functions.containsKey("main")) {
+            return "Error: main method not defined";
+        }
+
+        FunctionDecl mainFunc = functions.get("main");
+
+        Map<String, Object> memory = new HashMap<>();
+        memory.put(mainFunc.getParams().get(0), arg);
+
+        return executeStmtList(mainFunc.getBody(), memory, functions);
+    }    
+    Object executeBlock(Block block, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        return executeStmtList(block.getStatements(), memory, functions); 
     }
 
-    Object executeBlock(Block block, Map<String, Object> memory) {
-        for (Statement statement : block.getStatements()) {
-            Object result = executeStatement(statement, memory);
-            if (result != null) {  
+    Object executeStmtList(ArrayList<Statement> stmtList, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        for (Statement statement : stmtList) {
+            Object result = executeStatement(statement, memory, functions);
+            if (result != null) {
                 return result; 
             }
         }
-        return null;  
+        return null; 
     }
 
-    Object executeStatement(Statement statement, Map<String, Object> memory) {
+    Object executeStatement(Statement statement, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
         if (statement instanceof ReturnStatement) {
-            return evaluateExpr(((ReturnStatement)statement).getExpr(), memory);
+            return evaluateExpr(((ReturnStatement)statement).getExpr(), memory, functions);
         } else if (statement instanceof PrintStatement) {
-            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr(), memory).toString());
+            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr(), memory, functions).toString());
         } else if (statement instanceof IfStatement) {
-            Object result = executeIfStatement((IfStatement)statement, memory);
+            Object result = executeIfStatement((IfStatement)statement, memory, functions);
             if (result != null) {
                 return result; 
             }
         } else if (statement instanceof Declaration) {
             Declaration d = (Declaration)statement;
-            memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory) : null);
+            memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory, functions) : null);
         } else if (statement instanceof Assignment) {
             Assignment a = (Assignment)statement;
             if (memory.containsKey(a.getName())) {
-                memory.put(a.getName(), evaluateExpr(a.getExpr(), memory));
+                memory.put(a.getName(), evaluateExpr(a.getExpr(), memory, functions));
             }
         } else if (statement instanceof Block) {
             Block blockStmt = (Block)statement;
-            Object result = executeBlock(blockStmt, memory);
+            Object result = executeBlock(blockStmt, memory, functions);
             if (result != null) {
                 return result;
             }
@@ -151,14 +167,14 @@ public class Interpreter {
     }
 
     
-    Object executeIfStatement(IfStatement statement, Map<String, Object> memory) {
-        if (evaluateCondition(statement.getCondition(), memory)) {
-            Object result = executeBlock(statement.getThenBlock(), memory);
+    Object executeIfStatement(IfStatement statement, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        if (evaluateCondition(statement.getCondition(), memory, functions)) {
+            Object result = executeBlock(statement.getThenBlock(), memory, functions);
             if (result != null) {  
                 return result;
             }
         } else if (statement.hasElse()) {
-            Object result = executeBlock(statement.getElseBlock(), memory);
+            Object result = executeBlock(statement.getElseBlock(), memory, functions);
             if (result != null) {
                 return result;
             }
@@ -166,11 +182,11 @@ public class Interpreter {
         return null;
     }
 
-    Boolean evaluateCondition(Condition cond, Map<String, Object> memory) {
+    Boolean evaluateCondition(Condition cond, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
         if (cond instanceof Comparison) {
             Comparison comp = (Comparison)cond;
-            long val1 = (Long)evaluateExpr(comp.getLeftExpr(), memory);
-            long val2 = (Long)evaluateExpr(comp.getRightExpr(), memory);
+            long val1 = (Long)evaluateExpr(comp.getLeftExpr(), memory, functions);
+            long val2 = (Long)evaluateExpr(comp.getRightExpr(), memory, functions);
             
             switch(comp.getOperator()) {
                 case Comparison.EQUALS: return val1 == val2;
@@ -184,26 +200,28 @@ public class Interpreter {
         } else if (cond instanceof LogicalCond) {
             LogicalCond logic = (LogicalCond)cond;
             if (logic.getOperator() == LogicalCond.NOT) {
-                return !evaluateCondition(logic.getLeftCond(), memory);
+                return !evaluateCondition(logic.getLeftCond(), memory, functions);
             } 
-            Boolean val1 = evaluateCondition(logic.getLeftCond(), memory);
-            Boolean val2 = evaluateCondition(logic.getRightCond(), memory);
-            switch (logic.getOperator()) {
-                case LogicalCond.AND: return val1 && val2; 
-                case LogicalCond.OR: return val1 || val2;
-                default: throw new RuntimeException("Unknown logical operator");
+            if (logic.getOperator() == LogicalCond.OR) {
+                Boolean val1 = evaluateCondition(logic.getLeftCond(), memory, functions);
+                if (val1) return true; 
+                return evaluateCondition(logic.getRightCond(), memory, functions);
+            } else if (logic.getOperator() == LogicalCond.AND) {
+                Boolean val1 = evaluateCondition(logic.getLeftCond(), memory, functions);
+                if (!val1) return false; 
+                return evaluateCondition(logic.getRightCond(), memory, functions);
             }
         }
         throw new RuntimeException("Unknown condition type");
     }
 
-    Object evaluateExpr(Expr expr, Map<String, Object> memory) {
+    Object evaluateExpr(Expr expr, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
         if (expr instanceof ConstExpr) {
             return ((ConstExpr)expr).getValue();
         } else if (expr instanceof BinaryExpr) {
             BinaryExpr binaryExpr = (BinaryExpr)expr;
-            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr(), memory);
-            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr(), memory);
+            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr(), memory, functions);
+            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr(), memory, functions);
             switch (binaryExpr.getOperator()) {
                 case BinaryExpr.PLUS: return val1 + val2;
                 case BinaryExpr.MINUS: return val1 - val2;
@@ -212,7 +230,7 @@ public class Interpreter {
             }
         } else if (expr instanceof UnaryMinusExpr) {
             UnaryMinusExpr unaryMinusExpr = (UnaryMinusExpr)expr;
-            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr(), memory);
+            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr(), memory, functions);
         } else if (expr instanceof VarExpr) {
             VarExpr varExpr = (VarExpr)expr;
             String varName = varExpr.getName();
@@ -220,7 +238,41 @@ public class Interpreter {
                 throw new RuntimeException("Undefined variable: " + varName);
             }
             return memory.get(varName);
-        } else {
+        } else if (expr instanceof FunctionCall) {
+            FunctionCall funcCall = (FunctionCall) expr; 
+            // hashmap populated when interpreter is first created, go through function list 
+            FunctionDecl calleeDef = functions.get(funcCall.getName());
+            // built in function 
+            if (calleeDef == null) {
+                if (funcCall.getName().equals("randomInt")) {
+                    int n;
+                    if (funcCall.getArgs().isEmpty()) {
+                        n = 100; 
+                    } else {
+                        Object argVal = evaluateExpr(funcCall.getArgs().get(0), memory, functions); 
+                        n = ((Long) argVal).intValue();                   
+                    }
+                    return (long) random.nextInt(n);
+                } else {
+                    return null; 
+                }
+
+            }
+            HashMap<String, Object> newEnv = new HashMap<String, Object>();
+            ArrayList<Expr> args = funcCall.getArgs();
+            ArrayList<String> params = calleeDef.getParams();
+
+            if (args.size() > params.size()) {
+                return "Error: more arguments given than expected";
+            }
+
+            for (int i = 0; i < args.size(); i++) {
+                newEnv.put(params.get(i), evaluateExpr(args.get(i), memory, functions));
+            }
+            
+            return executeStmtList(calleeDef.getBody(), newEnv, functions);
+        }
+        else {
             throw new RuntimeException("Unhandled Expr type");
         }
     }

@@ -47,7 +47,6 @@ import interpreter.Interpreter;
      return symbolFactory.newSymbol("EOF", EOF, new Location(yyline + 1, yycolumn + 1, yychar), new Location(yyline + 1, yycolumn + 1, yychar + 1));
 %eofval}
 
-
 IntLiteral = 0 | [1-9][0-9]*
 Identifier = [a-zA-Z_][a-zA-Z0-9_]*
 
@@ -85,8 +84,8 @@ white_space = {new_line} | [ \t\f]
 "="           { return symbol("=", ASSIGN); }
 "if"           { return symbol("if", IF); }
 "else"           { return symbol("else", ELSE); }
-"int main"               { return symbol("int main",  MAIN); }
 "return"               { return symbol("return",  RETURN); }
+","                  { return symbol (",", COMMA); }
 
 "int"  { return symbol("int", TYPE, "int"); }
 "Q"    { return symbol("Q", TYPE, "Q"); }

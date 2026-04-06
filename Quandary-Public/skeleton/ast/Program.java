@@ -1,27 +1,22 @@
 package ast;
 
 import java.io.PrintStream;
+import java.util.ArrayList;
 
 public class Program extends ASTNode {
 
-    final Block b;
-    final String arg;
+    final ArrayList<FunctionDecl> functionList;
 
-    public Program(String arg, Block b, Location loc) {
+    public Program(ArrayList<FunctionDecl> functionList, Location loc) {
         super(loc);
-        this.b = b;
-        this.arg = arg;
+        this.functionList = functionList;
     }
 
-    public Block getBlock() {
-        return b;
-    }
-
-    public String getArg() {
-        return arg;
+    public ArrayList<FunctionDecl> getFunctions() {
+        return functionList;
     }
 
     public void println(PrintStream ps) {
-        ps.println(b);
+        ps.println("program print");
     }
 }
