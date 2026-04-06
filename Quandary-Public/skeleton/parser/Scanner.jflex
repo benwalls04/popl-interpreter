@@ -83,12 +83,15 @@ white_space = {new_line} | [ \t\f]
 "print"           { return symbol("print", PRINT); }
 "="           { return symbol("=", ASSIGN); }
 "if"           { return symbol("if", IF); }
+"while"     { return symbol("while", WHILE) ; }
 "else"           { return symbol("else", ELSE); }
 "return"               { return symbol("return",  RETURN); }
 ","                  { return symbol (",", COMMA); }
+"mutable"          { return symbol ("mutable", MUTABLE); }
 
 "int"  { return symbol("int", TYPE, "int"); }
 "Q"    { return symbol("Q", TYPE, "Q"); }
+"Ref"  { return symbol("Ref", TYPE, "Ref"); }
 
 {Identifier}      { return symbol(yytext(), IDENTIFIER, yytext()); }
 

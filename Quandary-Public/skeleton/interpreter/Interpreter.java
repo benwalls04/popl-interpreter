@@ -147,6 +147,13 @@ public class Interpreter {
             if (result != null) {
                 return result; 
             }
+        } else if (statement instanceof WhileStatement) {
+            Object result = executeWhileStatement((WhileStatement)statement, memory, functions);
+            if (result != null) {
+                return result;
+            }
+        } else if (statement instanceof CallStatement) {
+            evaluateExpr(((CallStatement) statement).getCall(), memory, functions);
         } else if (statement instanceof Declaration) {
             Declaration d = (Declaration)statement;
             memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory, functions) : null);
@@ -213,6 +220,16 @@ public class Interpreter {
             }
         }
         throw new RuntimeException("Unknown condition type");
+    }
+
+    Object executeWhileStatement(WhileStatement statement, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        while (evaluateCondition(statement.getCondition(), memory, functions)) {
+            Object result = executeStatement(statement.getBody(), memory, functions);
+            if (result != null) {
+                return result;
+            }
+        }
+        return null;
     }
 
     Object evaluateExpr(Expr expr, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
