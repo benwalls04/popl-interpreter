@@ -298,8 +298,8 @@ public class Interpreter {
                     case "isAtom":    return evaluateIsAtom(funcCall, memory, functions);
                     case "left":  return evaluateLeft(funcCall, memory, functions);
                     case "right": return evaluateRight(funcCall, memory, functions);
-                    case "setLeft":   evaluateSetLeft(funcCall, memory, functions); return NIL;
-                    case "setRight":  evaluateSetRight(funcCall, memory, functions); return NIL;
+                    case "setLeft":   return evaluateSetLeft(funcCall, memory, functions); 
+                    case "setRight":  return evaluateSetRight(funcCall, memory, functions);
                     default:          return NIL;
                 }
             }
@@ -353,7 +353,7 @@ public class Interpreter {
         return ((QRef) arg).right;
     }
 
-    private void evaluateSetLeft(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+    private Object evaluateSetLeft(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
         Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
         if (!(arg instanceof QRef)) {
             throw new RuntimeException("Argument to setLeft must be a QRef");
@@ -361,9 +361,10 @@ public class Interpreter {
         QRef qref = (QRef) arg;
         Object newLeftVal = evaluateExpr(funcCall.getArgs().get(1), memory, functions);
         qref.left = newLeftVal;
+        return 1L;
     }
 
-    private void evaluateSetRight(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+    private Object evaluateSetRight(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
         Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
         if (!(arg instanceof QRef)) {
             throw new RuntimeException("Argument to setRight must be a QRef");
@@ -371,6 +372,7 @@ public class Interpreter {
         QRef qref = (QRef) arg;
         Object newRightVal = evaluateExpr(funcCall.getArgs().get(1), memory, functions);
         qref.right = newRightVal;
+        return 1L;
     }
 
 	public static void fatalError(String message, int processReturnCode) {

@@ -66,15 +66,16 @@ non terminal ArrayList<FunctionDecl> functionList;
 non terminal ArrayList<String> paramList;
 non terminal NilExpr nilExpr; 
 non terminal DotExpr dotExpr;
+non terminal Expr castExpr;
 
 precedence left OR;
 precedence left AND;
 precedence left NOT;
 precedence left EQEQ, NOTEQ;
 precedence left LT, GT, LEQ, GEQ;
+precedence left DOT;
 precedence left PLUS, MINUS;
 precedence left MULT;
-precedence left DOT;
 precedence nonassoc ELSE;
 
 start with program;
@@ -227,8 +228,8 @@ expr ::= INTCONST:c
          {: RESULT = e; :}
       |  LPAREN expr:e RPAREN
          {: RESULT = e; :}
-      |  LPAREN TYPE:t RPAREN expr:e 
-         {: RESULT = e; :}                  
+      |  castExpr:e  
+         {: RESULT = e; :}                 
       |  unaryMinusExpr:e
          {: RESULT = e; :}
       |  functionCall:f 
@@ -238,6 +239,18 @@ expr ::= INTCONST:c
       |  dotExpr:d 
          {: RESULT = d; :} 
       ;
+
+castExpr ::= LPAREN TYPE:t RPAREN INTCONST:c
+                {: RESULT = new ConstExpr(c, loc(cleft, cright)); :}
+           | LPAREN TYPE:t RPAREN IDENTIFIER:id
+                {: RESULT = new VarExpr(id, loc(idleft, idright)); :}
+           | LPAREN TYPE:t RPAREN functionCall:f
+                {: RESULT = f; :}
+           | LPAREN TYPE:t RPAREN LPAREN expr:e RPAREN
+                {: RESULT = e; :}
+           | LPAREN TYPE:t RPAREN castExpr:e
+                {: RESULT = e; :}
+           ;
 
 unaryMinusExpr ::= MINUS expr:e                
               {: RESULT = new UnaryMinusExpr(e, loc(eleft, eright)); :}
