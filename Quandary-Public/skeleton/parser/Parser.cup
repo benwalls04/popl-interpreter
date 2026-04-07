@@ -40,6 +40,7 @@ terminal String COMMA;
 terminal String WHILE;
 terminal String MUTABLE;
 terminal String NIL;
+terminal String DOT; 
 
 non terminal Program         program;
 non terminal Expr            expr;
@@ -64,6 +65,7 @@ non terminal ArrayList<Expr> argList;
 non terminal ArrayList<FunctionDecl> functionList; 
 non terminal ArrayList<String> paramList;
 non terminal NilExpr nilExpr; 
+non terminal DotExpr dotExpr;
 
 precedence left OR;
 precedence left AND;
@@ -72,6 +74,7 @@ precedence left EQEQ, NOTEQ;
 precedence left LT, GT, LEQ, GEQ;
 precedence left PLUS, MINUS;
 precedence left MULT;
+precedence left DOT;
 precedence nonassoc ELSE;
 
 start with program;
@@ -88,12 +91,20 @@ functionList ::= functionList:list1 functionDecl:f
 
 functionDecl ::= TYPE:t IDENTIFIER:id LPAREN paramList:params RPAREN LBRACK statementList:b RBRACK
             {: RESULT = new FunctionDecl(id, params, b, loc(bleft, bright)); :}
+         | MUTABLE TYPE:t IDENTIFIER:id LPAREN paramList:params RPAREN LBRACK statementList:b RBRACK
+            {: RESULT = new FunctionDecl(id, params, b, loc(bleft, bright)); :}
          ;
 
 paramList ::= TYPE:t IDENTIFIER:id
             {: RESULT = new ArrayList<String>();
                RESULT.add(id); :}
+         | MUTABLE TYPE:t IDENTIFIER:id
+            {: RESULT = new ArrayList<String>();
+               RESULT.add(id); :}
          | paramList:params1 COMMA TYPE:t IDENTIFIER:id
+            {: params1.add(id);
+               RESULT = params1; :}
+         | paramList:params1 COMMA MUTABLE TYPE:t IDENTIFIER:id
             {: params1.add(id);
                RESULT = params1; :}
          |  {: RESULT = new ArrayList<String>(); :}
@@ -216,12 +227,16 @@ expr ::= INTCONST:c
          {: RESULT = e; :}
       |  LPAREN expr:e RPAREN
          {: RESULT = e; :}
+      |  LPAREN TYPE:t RPAREN expr:e 
+         {: RESULT = e; :}                  
       |  unaryMinusExpr:e
          {: RESULT = e; :}
       |  functionCall:f 
          {: RESULT = f; :}
       |  nilExpr:n 
          {: RESULT = n; :}
+      |  dotExpr:d 
+         {: RESULT = d; :} 
       ;
 
 unaryMinusExpr ::= MINUS expr:e                
@@ -235,3 +250,11 @@ binaryExpr ::= expr:e1 PLUS expr:e2
             |  expr:e1 MULT expr:e2
                {: RESULT = new BinaryExpr(e1, BinaryExpr.MULT, e2, loc(e1left, e1right)); :}
             ;
+
+nilExpr ::= NIL:n
+        {: RESULT = new NilExpr(loc(nleft, nright)); :}
+    ;
+
+dotExpr ::= expr:e1 DOT expr:e2
+        {: RESULT = new DotExpr(e1, e2, loc(e1left, e1right)); :}
+    ;

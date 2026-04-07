@@ -82,7 +82,14 @@ public class Interpreter {
         //astRoot.println(System.out);
         interpreter = new Interpreter(astRoot);
         interpreter.initMemoryManager(gcType, heapBytes);
-        String returnValueAsString = interpreter.executeRoot(astRoot, quandaryArg).toString();
+
+        Object returnValue = interpreter.executeRoot(astRoot, quandaryArg);
+        String returnValueAsString;
+        if (returnValue == null || returnValue == Interpreter.NIL) {
+            returnValueAsString = "nil";
+        } else {
+            returnValueAsString = returnValue.toString();
+        }
         System.out.println("Interpreter returned " + returnValueAsString);
     }
 
@@ -275,24 +282,26 @@ public class Interpreter {
                 throw new RuntimeException("Undefined variable: " + varName);
             }
             return memory.get(varName);
+        } else if (expr instanceof DotExpr) {
+            DotExpr dotExpr = (DotExpr) expr;
+            Object leftVal = evaluateExpr(dotExpr.getLeft(), memory, functions);
+            Object rightVal = evaluateExpr(dotExpr.getRight(), memory, functions);
+            return new QRef(leftVal, rightVal);
         } else if (expr instanceof FunctionCall) {
             FunctionCall funcCall = (FunctionCall) expr; 
             FunctionDecl calleeDef = functions.get(funcCall.getName());
 
             if (calleeDef == null) {
-                if (funcCall.getName().equals("randomInt")) {
-                    int n;
-                    if (funcCall.getArgs().isEmpty()) {
-                        n = 100; 
-                    } else {
-                        Object argVal = evaluateExpr(funcCall.getArgs().get(0), memory, functions); 
-                        n = ((Long) argVal).intValue();                   
-                    }
-                    return (long) random.nextInt(n);
-                } else {
-                    return NIL; 
+                switch (funcCall.getName()) {
+                    case "randomInt": return evaluateRandomInt(funcCall, memory, functions);
+                    case "isNil":     return evaluateIsNil(funcCall, memory, functions);
+                    case "isAtom":    return evaluateIsAtom(funcCall, memory, functions);
+                    case "left":  return evaluateLeft(funcCall, memory, functions);
+                    case "right": return evaluateRight(funcCall, memory, functions);
+                    case "setLeft":   evaluateSetLeft(funcCall, memory, functions); return NIL;
+                    case "setRight":  evaluateSetRight(funcCall, memory, functions); return NIL;
+                    default:          return NIL;
                 }
-
             }
 
             HashMap<String, Object> newEnv = new HashMap<String, Object>();
@@ -314,6 +323,54 @@ public class Interpreter {
         else {
             throw new RuntimeException("Unhandled Expr type");
         }
+    }
+
+    private long evaluateRandomInt(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        if (funcCall.getArgs().isEmpty()) {
+            return (long) random.nextInt(100);
+        }
+        Object argVal = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        return (long) random.nextInt(((Long) argVal).intValue());
+    }
+
+    private long evaluateIsNil(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        return arg == NIL ? 1L : 0L;
+    }
+
+    private long evaluateIsAtom(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        return (arg instanceof Long || arg == NIL) ? 1L : 0L;
+    }
+
+    private Object evaluateLeft(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        return ((QRef) arg).left;
+    }
+
+    private Object evaluateRight(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        return ((QRef) arg).right;
+    }
+
+    private void evaluateSetLeft(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        if (!(arg instanceof QRef)) {
+            throw new RuntimeException("Argument to setLeft must be a QRef");
+        }
+        QRef qref = (QRef) arg;
+        Object newLeftVal = evaluateExpr(funcCall.getArgs().get(1), memory, functions);
+        qref.left = newLeftVal;
+    }
+
+    private void evaluateSetRight(FunctionCall funcCall, Map<String, Object> memory, Map<String, FunctionDecl> functions) {
+        Object arg = evaluateExpr(funcCall.getArgs().get(0), memory, functions);
+        if (!(arg instanceof QRef)) {
+            throw new RuntimeException("Argument to setRight must be a QRef");
+        }
+        QRef qref = (QRef) arg;
+        Object newRightVal = evaluateExpr(funcCall.getArgs().get(1), memory, functions);
+        qref.right = newRightVal;
     }
 
 	public static void fatalError(String message, int processReturnCode) {
