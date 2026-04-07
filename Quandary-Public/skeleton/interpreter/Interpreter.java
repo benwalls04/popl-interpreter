@@ -23,6 +23,8 @@ public class Interpreter {
 
     static private Interpreter interpreter;
 
+    public static final Object NIL = new Object();
+
     public static Interpreter getInterpreter() {
         return interpreter;
     }
@@ -141,7 +143,12 @@ public class Interpreter {
         if (statement instanceof ReturnStatement) {
             return evaluateExpr(((ReturnStatement)statement).getExpr(), memory, functions);
         } else if (statement instanceof PrintStatement) {
-            System.out.println(evaluateExpr(((PrintStatement)statement).getExpr(), memory, functions).toString());
+            Object value = evaluateExpr(((PrintStatement)statement).getExpr(), memory, functions);
+            if (value == NIL) {
+                System.out.println("nil");
+            } else {
+                System.out.println(value);
+            }
         } else if (statement instanceof IfStatement) {
             Object result = executeIfStatement((IfStatement)statement, memory, functions);
             if (result != null) {
@@ -156,7 +163,7 @@ public class Interpreter {
             evaluateExpr(((CallStatement) statement).getCall(), memory, functions);
         } else if (statement instanceof Declaration) {
             Declaration d = (Declaration)statement;
-            memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory, functions) : null);
+            memory.put(d.getName(), d.hasExpr()? evaluateExpr(d.getExpr(), memory, functions) : NIL);
         } else if (statement instanceof Assignment) {
             Assignment a = (Assignment)statement;
             if (memory.containsKey(a.getName())) {
@@ -237,8 +244,17 @@ public class Interpreter {
             return ((ConstExpr)expr).getValue();
         } else if (expr instanceof BinaryExpr) {
             BinaryExpr binaryExpr = (BinaryExpr)expr;
-            long val1 = (Long)evaluateExpr(binaryExpr.getLeftExpr(), memory, functions);
-            long val2 = (Long)evaluateExpr(binaryExpr.getRightExpr(), memory, functions);
+
+            Object left = evaluateExpr(binaryExpr.getLeftExpr(), memory, functions);
+            Object right = evaluateExpr(binaryExpr.getRightExpr(), memory, functions);
+
+            if (left == NIL || right == NIL) {
+                throw new RuntimeException("Cannot perform binary operation on nil");
+            }
+
+            long val1 = (Long)left;
+            long val2 = (Long)right;
+
             switch (binaryExpr.getOperator()) {
                 case BinaryExpr.PLUS: return val1 + val2;
                 case BinaryExpr.MINUS: return val1 - val2;
@@ -247,7 +263,11 @@ public class Interpreter {
             }
         } else if (expr instanceof UnaryMinusExpr) {
             UnaryMinusExpr unaryMinusExpr = (UnaryMinusExpr)expr;
-            return -1 * (Long)evaluateExpr(unaryMinusExpr.getExpr(), memory, functions);
+            Object val = evaluateExpr(unaryMinusExpr.getExpr(), memory, functions);
+            if (val == NIL) {
+                throw new RuntimeException("Cannot perform unary minus on nil");
+            }
+            return -(Long)val;
         } else if (expr instanceof VarExpr) {
             VarExpr varExpr = (VarExpr)expr;
             String varName = varExpr.getName();
@@ -257,9 +277,8 @@ public class Interpreter {
             return memory.get(varName);
         } else if (expr instanceof FunctionCall) {
             FunctionCall funcCall = (FunctionCall) expr; 
-            // hashmap populated when interpreter is first created, go through function list 
             FunctionDecl calleeDef = functions.get(funcCall.getName());
-            // built in function 
+
             if (calleeDef == null) {
                 if (funcCall.getName().equals("randomInt")) {
                     int n;
@@ -271,10 +290,11 @@ public class Interpreter {
                     }
                     return (long) random.nextInt(n);
                 } else {
-                    return null; 
+                    return NIL; 
                 }
 
             }
+
             HashMap<String, Object> newEnv = new HashMap<String, Object>();
             ArrayList<Expr> args = funcCall.getArgs();
             ArrayList<String> params = calleeDef.getParams();
@@ -286,8 +306,10 @@ public class Interpreter {
             for (int i = 0; i < args.size(); i++) {
                 newEnv.put(params.get(i), evaluateExpr(args.get(i), memory, functions));
             }
-            
-            return executeStmtList(calleeDef.getBody(), newEnv, functions);
+            Object result = executeStmtList(calleeDef.getBody(), newEnv, functions);
+            return result == null ? NIL : result;
+        } else if (expr instanceof NilExpr) {
+            return NIL;
         }
         else {
             throw new RuntimeException("Unhandled Expr type");

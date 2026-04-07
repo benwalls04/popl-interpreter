@@ -39,6 +39,7 @@ terminal String TYPE;
 terminal String COMMA;
 terminal String WHILE;
 terminal String MUTABLE;
+terminal String NIL;
 
 non terminal Program         program;
 non terminal Expr            expr;
@@ -62,6 +63,7 @@ non terminal FunctionDecl functionDecl;
 non terminal ArrayList<Expr> argList;
 non terminal ArrayList<FunctionDecl> functionList; 
 non terminal ArrayList<String> paramList;
+non terminal NilExpr nilExpr; 
 
 precedence left OR;
 precedence left AND;
@@ -118,6 +120,10 @@ statement ::= printStatement:s
       |  returnStatement:s
          {: RESULT = s; :}
       | ifStatement:s 
+         {: RESULT = s; :}
+      | whileStatement:s 
+         {: RESULT = s; :}
+      | callStatement:s 
          {: RESULT = s; :}
       | block:b
          {: RESULT = b; :}
@@ -214,6 +220,8 @@ expr ::= INTCONST:c
          {: RESULT = e; :}
       |  functionCall:f 
          {: RESULT = f; :}
+      |  nilExpr:n 
+         {: RESULT = n; :}
       ;
 
 unaryMinusExpr ::= MINUS expr:e                

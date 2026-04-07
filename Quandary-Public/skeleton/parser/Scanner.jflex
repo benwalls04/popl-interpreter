@@ -88,6 +88,7 @@ white_space = {new_line} | [ \t\f]
 "return"               { return symbol("return",  RETURN); }
 ","                  { return symbol (",", COMMA); }
 "mutable"          { return symbol ("mutable", MUTABLE); }
+"nil"              { return symbol ("nil", NIL ); }
 
 "int"  { return symbol("int", TYPE, "int"); }
 "Q"    { return symbol("Q", TYPE, "Q"); }
